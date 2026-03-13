@@ -906,8 +906,10 @@ var openSiteAct = null;
 var userInitiatedLogin = false;
 var isOAuthCallback = (function() {
   var h = window.location.hash || '';
-  // Google OAuth callback يحتوي access_token لكن مش type=recovery
-  return h.includes('access_token') && !h.includes('type=recovery');
+  var s = window.location.search || '';
+  var hashBased = h.includes('access_token') && !h.includes('type=recovery');
+  var codeBased = s.includes('code=') && !h.includes('type=recovery');
+  return hashBased || codeBased;
 })();
 
 // ════════════════════════════════════════════════════
