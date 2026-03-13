@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<!-- saved from url=(0043)file:///Users/uesr/Downloads/LinkUp_17.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- saved from url=(0043)file:///Users/uesr/Downloads/LinkUp_18.html -->
+<html lang="en" data-theme="" dir="ltr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>LinkUp</title>
@@ -456,7 +456,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
   .navbar-inner,.search-wrap,.segment-inner{max-width:960px}
 }
 </style>
-<script src="./index_files/supabase-js@2"></script>
+
 </head>
 <body>
 
@@ -722,7 +722,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
 </div><!-- /app -->
 
 <!-- FAB -->
-<button class="fab" id="fab" onclick="onFabClick()">
+<button class="fab" id="fab" onclick="onFabClick()" style="display: none;">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 </button>
 
@@ -887,13 +887,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
 </div>
 
 <div class="toast" id="toast"></div>
-
+<script src="./index_files/supabase.js"></script>
 <script>
-// ════════════════════════════════════════
-// LINKUP v5 — CLEAN AUTH SYSTEM
-// ════════════════════════════════════════
-
-// ── STATE ──
+// ════════════════════════════════════════════════════
+// LINKUP v5 — STATE
+// ════════════════════════════════════════════════════
 var sb = null;
 var currentUser = null;
 var sites = [], notes = [], groups = [], notifs = [];
@@ -907,23 +905,29 @@ var alertTimers = {};
 var openSiteAct = null;
 var userInitiatedLogin = false;
 
-// ── INIT SUPABASE ──
+// ════════════════════════════════════════════════════
+// SUPABASE INIT — انتظر تحميل المكتبة
+// ════════════════════════════════════════════════════
 function initSupabase() {
-  if (typeof supabase === 'undefined' || !supabase.createClient) {
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    sb = supabase.createClient(
+      'https://fkrziclcdyjdekqpyklc.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrcnppY2xjZHlqZGVrcXB5a2xjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkzMjEsImV4cCI6MjA4ODkwNTMyMX0.nQQmPIgP8FVAujyTbi4i4cxVAdEVbmvYGO1_34J8Xio'
+    );
+    startApp();
+  } else {
     setTimeout(initSupabase, 100);
-    return;
   }
-  sb = supabase.createClient('https://fkrziclcdyjdekqpyklc.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrcnppY2xjZHlqZGVrcXB5a2xjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkzMjEsImV4cCI6MjA4ODkwNTMyMX0.nQQmPIgP8FVAujyTbi4i4cxVAdEVbmvYGO1_34J8Xio');
-  startApp();
 }
 
-// ── START APP ──
+// ════════════════════════════════════════════════════
+// START APP
+// ════════════════════════════════════════════════════
 function startApp() {
   applyDark(dark);
   setLang(lang);
   document.getElementById('fab').style.display = 'none';
 
-  // Auth state listener
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_IN' && session && session.user) {
       var rememberMe = localStorage.getItem('lu5-remember') === 'true';
@@ -936,44 +940,33 @@ function startApp() {
     }
   });
 
-  // Check if remember me + existing session
   var rememberMe = localStorage.getItem('lu5-remember') === 'true';
-  if (rememberMe) {
-    sb.auth.getSession().then(function(result) {
-      if (result.data && result.data.session && result.data.session.user) {
-        onUserSignedIn(result.data.session.user);
-      } else {
-        showScreen('screen-welcome');
-      }
-    });
-  } else {
-    // Force clear session and show welcome
-    sb.auth.getSession().then(function(result) {
-      if (result.data && result.data.session) {
-        sb.auth.signOut().then(function() { showScreen('screen-welcome'); });
-      } else {
-        showScreen('screen-welcome');
-      }
-    });
-  }
+  sb.auth.getSession().then(function(res) {
+    var session = res.data && res.data.session;
+    if (session && session.user && rememberMe) {
+      onUserSignedIn(session.user);
+    } else if (session) {
+      sb.auth.signOut().then(function() { showScreen('screen-welcome'); });
+    } else {
+      showScreen('screen-welcome');
+    }
+  });
 
-  // Check password recovery from URL hash
   checkPasswordRecovery();
 
-  // Init toggles
   var rm = localStorage.getItem('lu5-remember') === 'true';
   ['remember-toggle','remember-toggle-mobile','remember-me-toggle'].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.checked = rm;
+    var el = document.getElementById(id);
+    if (el) el.checked = rm;
   });
 }
 
-async function onUserSignedIn(user) {
+function onUserSignedIn(user) {
   currentUser = user;
   document.querySelectorAll('.auth-screen').forEach(function(s) { s.classList.add('hidden'); });
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('fab').style.display = 'flex';
-  await loadAllData();
-  updateProfileUI();
+  loadAllData().then(updateProfileUI);
 }
 
 function onUserSignedOut() {
@@ -983,93 +976,94 @@ function onUserSignedOut() {
   showScreen('screen-welcome');
 }
 
-// ── AUTH SCREENS ──
+// ════════════════════════════════════════════════════
+// AUTH SCREENS
+// ════════════════════════════════════════════════════
 function showScreen(id) {
   document.querySelectorAll('.auth-screen').forEach(function(s) { s.classList.add('hidden'); });
   var el = document.getElementById(id);
   if (el) el.classList.remove('hidden');
 }
 
+function setErrMsg(elId, msg) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+function setSucMsg(elId, msg) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+
 async function signInEmail() {
   var email = document.getElementById('si-email').value.trim();
-  var pass = document.getElementById('si-password').value;
-  var errEl = document.getElementById('signin-error');
-  errEl.classList.remove('show');
-  if (!email || !pass) { errEl.textContent = 'Please fill all fields.'; errEl.classList.add('show'); return; }
+  var pass  = document.getElementById('si-password').value;
+  setErrMsg('signin-error', '');
+  if (!email || !pass) { setErrMsg('signin-error', 'Please fill all fields.'); return; }
   var btn = document.getElementById('btn-signin');
   btn.textContent = 'Signing in…'; btn.disabled = true;
   try {
     userInitiatedLogin = true;
-    var result = await Promise.race([
+    var res = await Promise.race([
       sb.auth.signInWithPassword({ email: email, password: pass }),
-      new Promise(function(_, rej) { setTimeout(function() { rej(new Error('timeout')); }, 15000); })
+      new Promise(function(_, r) { setTimeout(function() { r(new Error('timeout')); }, 15000); })
     ]);
-    btn.textContent = 'Sign In'; btn.disabled = false;
-    if (result.error) {
-      userInitiatedLogin = false;
-      errEl.textContent = result.error.message; errEl.classList.add('show');
-    }
+    if (res.error) { userInitiatedLogin = false; setErrMsg('signin-error', res.error.message); }
   } catch(e) {
     userInitiatedLogin = false;
-    btn.textContent = 'Sign In'; btn.disabled = false;
-    errEl.textContent = e.message === 'timeout' ? 'Connection timed out. Try again.' : e.message;
-    errEl.classList.add('show');
+    setErrMsg('signin-error', e.message === 'timeout' ? 'Connection timed out. Try again.' : e.message);
   }
+  btn.textContent = 'Sign In'; btn.disabled = false;
 }
 
 async function signUpEmail() {
-  var name = document.getElementById('su-name').value.trim();
+  var name  = document.getElementById('su-name').value.trim();
   var email = document.getElementById('su-email').value.trim();
-  var pass = document.getElementById('su-password').value;
-  var errEl = document.getElementById('signup-error');
-  var sucEl = document.getElementById('signup-success');
-  errEl.classList.remove('show'); sucEl.classList.remove('show');
-  if (!name || !email || !pass) { errEl.textContent = 'Please fill all fields.'; errEl.classList.add('show'); return; }
-  if (pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.classList.add('show'); return; }
+  var pass  = document.getElementById('su-password').value;
+  setErrMsg('signup-error', ''); setSucMsg('signup-success', '');
+  if (!name || !email || !pass) { setErrMsg('signup-error', 'Please fill all fields.'); return; }
+  if (pass.length < 8) { setErrMsg('signup-error', 'Password must be at least 8 characters.'); return; }
   var btn = document.getElementById('btn-signup');
-  btn.textContent = 'Creating account…'; btn.disabled = true;
+  btn.textContent = 'Creating…'; btn.disabled = true;
   try {
-    var result = await Promise.race([
+    var res = await Promise.race([
       sb.auth.signUp({ email: email, password: pass, options: { data: { full_name: name } } }),
-      new Promise(function(_, rej) { setTimeout(function() { rej(new Error('timeout')); }, 15000); })
+      new Promise(function(_, r) { setTimeout(function() { r(new Error('timeout')); }, 15000); })
     ]);
-    btn.textContent = 'Create Account'; btn.disabled = false;
-    if (result.error) { errEl.textContent = result.error.message; errEl.classList.add('show'); }
-    else { sucEl.textContent = '✅ Account created! You can sign in now.'; sucEl.classList.add('show'); }
+    if (res.error) setErrMsg('signup-error', res.error.message);
+    else setSucMsg('signup-success', '✅ Account created! You can sign in now.');
   } catch(e) {
-    btn.textContent = 'Create Account'; btn.disabled = false;
-    errEl.textContent = e.message === 'timeout' ? 'Connection timed out. Try again.' : e.message;
-    errEl.classList.add('show');
+    setErrMsg('signup-error', e.message === 'timeout' ? 'Connection timed out.' : e.message);
   }
+  btn.textContent = 'Create Account'; btn.disabled = false;
 }
 
 async function sendResetEmail() {
   var email = document.getElementById('fp-email').value.trim();
-  var errEl = document.getElementById('forgot-error');
-  var sucEl = document.getElementById('forgot-success');
-  errEl.classList.remove('show'); sucEl.classList.remove('show');
-  if (!email) { errEl.textContent = 'Please enter your email.'; errEl.classList.add('show'); return; }
+  setErrMsg('forgot-error', ''); setSucMsg('forgot-success', '');
+  if (!email) { setErrMsg('forgot-error', 'Please enter your email.'); return; }
   var btn = document.getElementById('btn-forgot');
   btn.textContent = 'Sending…'; btn.disabled = true;
   try {
-    var result = await Promise.race([
+    var res = await Promise.race([
       sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://ms111111.github.io/linkup/' }),
-      new Promise(function(_, rej) { setTimeout(function() { rej(new Error('timeout')); }, 15000); })
+      new Promise(function(_, r) { setTimeout(function() { r(new Error('timeout')); }, 15000); })
     ]);
-    btn.textContent = 'Send Reset Link'; btn.disabled = false;
-    if (result.error) { errEl.textContent = result.error.message; errEl.classList.add('show'); }
-    else { sucEl.textContent = '✅ Reset link sent! Check your email.'; sucEl.classList.add('show'); }
+    if (res.error) setErrMsg('forgot-error', res.error.message);
+    else setSucMsg('forgot-success', '✅ Reset link sent! Check your email.');
   } catch(e) {
-    btn.textContent = 'Send Reset Link'; btn.disabled = false;
-    errEl.textContent = e.message === 'timeout' ? 'Connection timed out. Try again.' : e.message;
-    errEl.classList.add('show');
+    setErrMsg('forgot-error', e.message === 'timeout' ? 'Connection timed out.' : e.message);
   }
+  btn.textContent = 'Send Reset Link'; btn.disabled = false;
 }
 
 async function signInWithGoogle() {
   userInitiatedLogin = true;
-  var result = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'https://ms111111.github.io/linkup/' } });
-  if (result.error) { userInitiatedLogin = false; toast('❌ ' + result.error.message); }
+  var res = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'https://ms111111.github.io/linkup/' } });
+  if (res.error) { userInitiatedLogin = false; toast('Error: ' + res.error.message); }
 }
 
 async function signOut() {
@@ -1082,11 +1076,14 @@ async function signOut() {
 function toggleRemember(v) {
   localStorage.setItem('lu5-remember', v);
   ['remember-toggle','remember-toggle-mobile','remember-me-toggle'].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.checked = v;
+    var el = document.getElementById(id);
+    if (el) el.checked = v;
   });
 }
 
-// ── PASSWORD RECOVERY ──
+// ════════════════════════════════════════════════════
+// PASSWORD RECOVERY
+// ════════════════════════════════════════════════════
 async function checkPasswordRecovery() {
   var hash = window.location.hash;
   if (!hash) return;
@@ -1104,71 +1101,79 @@ async function checkPasswordRecovery() {
 async function submitNewPassword() {
   var pass = document.getElementById('np-password').value;
   var conf = document.getElementById('np-confirm').value;
-  var errEl = document.getElementById('newpass-error');
-  var sucEl = document.getElementById('newpass-success');
-  errEl.classList.remove('show'); sucEl.classList.remove('show');
-  if (!pass || pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.classList.add('show'); return; }
-  if (pass !== conf) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+  setErrMsg('newpass-error', ''); setSucMsg('newpass-success', '');
+  if (!pass || pass.length < 8) { setErrMsg('newpass-error', 'Min 8 characters.'); return; }
+  if (pass !== conf) { setErrMsg('newpass-error', 'Passwords do not match.'); return; }
   var btn = document.getElementById('btn-newpass');
   btn.textContent = 'Updating…'; btn.disabled = true;
-  var result = await sb.auth.updateUser({ password: pass });
+  var res = await sb.auth.updateUser({ password: pass });
   btn.textContent = 'Update Password'; btn.disabled = false;
-  if (result.error) { errEl.textContent = result.error.message; errEl.classList.add('show'); }
+  if (res.error) setErrMsg('newpass-error', res.error.message);
   else {
-    sucEl.textContent = '✅ Password updated! Please sign in.'; sucEl.classList.add('show');
+    setSucMsg('newpass-success', '✅ Password updated! Redirecting to sign in…');
     await sb.auth.signOut();
     setTimeout(function() { showScreen('screen-signin'); }, 2000);
   }
 }
 
-// ── LOAD DATA ──
+// ════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════
 async function loadAllData() {
-  var results = await Promise.all([
+  var res = await Promise.all([
     sb.from('groups').select('*').order('created_at'),
-    sb.from('sites').select('*').order('added_at', {ascending:false}),
-    sb.from('notes').select('*').order('created_at', {ascending:false}),
-    sb.from('notifications').select('*').order('time', {ascending:false})
+    sb.from('sites').select('*').order('added_at', { ascending: false }),
+    sb.from('notes').select('*').order('created_at', { ascending: false }),
+    sb.from('notifications').select('*').order('time', { ascending: false })
   ]);
-  groups = results[0].data || [];
-  sites = (results[1].data || []).map(function(s) { return Object.assign(s, {lastVisit:s.last_visit,addedAt:s.added_at,groupId:s.group_id}); });
-  notes = (results[2].data || []).map(function(n) { return Object.assign(n, {alertAt:n.alert_at,alertAfter:n.alert_after,alertFired:n.alert_fired,createdAt:n.created_at}); });
-  notifs = (results[3].data || []).map(function(n) { return Object.assign(n, {noteId:n.note_id}); });
+  groups = res[0].data || [];
+  sites  = (res[1].data || []).map(function(s) {
+    s.lastVisit = s.last_visit; s.addedAt = s.added_at; s.groupId = s.group_id; return s;
+  });
+  notes  = (res[2].data || []).map(function(n) {
+    n.alertAt = n.alert_at; n.alertAfter = n.alert_after; n.alertFired = n.alert_fired; n.createdAt = n.created_at; return n;
+  });
+  notifs = (res[3].data || []).map(function(n) { n.noteId = n.note_id; return n; });
   renderSites(); renderNotes(); renderNotifs(); renderSettingsGroups(); updateBadge();
-  notes.forEach(function(n) { if (!n.alertFired && n.alertAt && new Date(n.alertAt) > new Date()) scheduleAlerts(n); });
+  notes.forEach(function(n) {
+    if (!n.alertFired && n.alertAt && new Date(n.alertAt) > new Date()) scheduleAlert(n);
+  });
 }
 
-// ── PROFILE ──
+// ════════════════════════════════════════════════════
+// PROFILE
+// ════════════════════════════════════════════════════
 function updateProfileUI() {
   if (!currentUser) return;
   var meta = currentUser.user_metadata || {};
   var name = meta.full_name || meta.name || (currentUser.email ? currentUser.email.split('@')[0] : 'User');
   var email = currentUser.email || '';
   var initials = name.split(' ').map(function(w) { return w[0]; }).slice(0,2).join('').toUpperCase();
-  document.getElementById('sb-avatar-initials').textContent = initials;
-  document.getElementById('sb-profile-name').textContent = name;
-  document.getElementById('mob-avatar-initials').textContent = initials;
-  document.getElementById('tab-avatar-initials').textContent = initials;
-  document.getElementById('profile-initials-lg').textContent = initials;
-  document.getElementById('profile-name-display').textContent = name;
-  document.getElementById('profile-email-display').textContent = email;
-  document.getElementById('profile-name-row').textContent = name;
-  document.getElementById('profile-email-row').textContent = email;
-  document.getElementById('ps-sites').textContent = sites.length;
-  document.getElementById('ps-notes').textContent = notes.length;
-  document.getElementById('ps-groups').textContent = groups.length;
+  var ids = {
+    'sb-avatar-initials': initials, 'sb-profile-name': name,
+    'mob-avatar-initials': initials, 'tab-avatar-initials': initials,
+    'profile-initials-lg': initials, 'profile-name-display': name,
+    'profile-email-display': email, 'profile-name-row': name, 'profile-email-row': email,
+    'ps-sites': sites.length, 'ps-notes': notes.length, 'ps-groups': groups.length
+  };
+  Object.keys(ids).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = ids[id];
+  });
 }
 
-// ── TAB ──
+// ════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════
 function switchTab(name) {
   curTab = name;
   ['sites','notes','notifs','profile'].forEach(function(n) {
-    var page = document.getElementById('page-'+n); if(page) page.classList.toggle('active', n===name);
-    var tab = document.getElementById('tab-'+n); if(tab) tab.classList.toggle('active', n===name);
-    var sb2 = document.getElementById('sb-'+n); if(sb2) sb2.classList.toggle('active', n===name);
+    var page = document.getElementById('page-' + n);   if (page) page.classList.toggle('active', n === name);
+    var tab  = document.getElementById('tab-' + n);    if (tab)  tab.classList.toggle('active', n === name);
+    var sb2  = document.getElementById('sb-' + n);     if (sb2)  sb2.classList.toggle('active', n === name);
   });
-  var fab = document.getElementById('fab');
-  fab.style.display = (name==='sites'||name==='notes') ? 'flex' : 'none';
-  if (name === 'notifs') markAllNotifsRead();
+  document.getElementById('fab').style.display = (name === 'sites' || name === 'notes') ? 'flex' : 'none';
+  if (name === 'notifs')  markAllNotifsRead();
   if (name === 'profile') updateProfileUI();
 }
 
@@ -1177,404 +1182,593 @@ function onFabClick() {
   else if (curTab === 'notes') openAddNote();
 }
 
-// ── UTILS ──
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function saveC() { localStorage.setItem('lu5-collapsed', JSON.stringify([...collapsedGroups])); }
+// ════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function saveCollapsed() { localStorage.setItem('lu5-collapsed', JSON.stringify([...collapsedGroups])); }
 function fmt(iso) {
   if (!iso) return null;
   var d = new Date(iso), now = new Date();
-  var sec = Math.floor((now-d)/1000), day = Math.floor(sec/86400);
-  var locale = lang==='ar' ? 'ar-SA' : 'en-US';
-  var hm = d.toLocaleTimeString(locale, {hour:'2-digit',minute:'2-digit',hour12:true});
-  if (sec < 60) return 'just now';
-  if (day === 0) return hm;
-  if (day === 1) return 'Yesterday';
-  if (day < 7) return d.toLocaleDateString(locale, {weekday:'short'});
-  return d.toLocaleDateString(locale, {day:'numeric',month:'numeric',year:'2-digit'});
+  var sec = Math.floor((now - d) / 1000);
+  var locale = lang === 'ar' ? 'ar-SA' : 'en-US';
+  var hm = d.toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit', hour12: true });
+  if (sec < 60)  return 'just now';
+  if (Math.floor(sec/86400) === 0) return hm;
+  if (Math.floor(sec/86400) === 1) return 'Yesterday';
+  if (Math.floor(sec/86400) < 7)  return d.toLocaleDateString(locale, { weekday: 'short' });
+  return d.toLocaleDateString(locale, { day:'numeric', month:'numeric', year:'2-digit' });
 }
 function isRecent(iso) { return iso && (new Date() - new Date(iso)) < 86400000; }
-function fav(url) { try { return 'https://www.google.com/s2/favicons?domain=' + new URL(url).hostname + '&sz=64'; } catch(e) { return null; } }
-function fmtDur(sec) { if(!sec)return''; if(sec<3600)return (sec/60)+'m'; if(sec<86400)return (sec/3600)+'h'; return (sec/86400)+'d'; }
-
-// ── DARK / LANG ──
+function fav(url) {
+  try { return 'https://www.google.com/s2/favicons?domain=' + new URL(url).hostname + '&sz=64'; }
+  catch(e) { return null; }
+}
+function fmtDur(sec) {
+  if (!sec) return '';
+  if (sec < 3600)  return (sec / 60) + 'm';
+  if (sec < 86400) return (sec / 3600) + 'h';
+  return (sec / 86400) + 'd';
+}
 function applyDark(v) {
   document.documentElement.setAttribute('data-theme', v ? 'dark' : '');
   ['dark-toggle','dark-toggle-mobile'].forEach(function(id) { var el=document.getElementById(id); if(el) el.checked=v; });
   localStorage.setItem('lu5-dark', v);
 }
-function toggleDark(v) { dark=v; applyDark(v); }
+function toggleDark(v) { dark = v; applyDark(v); }
 function setLang(l) {
   lang = l; localStorage.setItem('lu5-lang', l);
-  var ls = document.getElementById('lang-select'); if(ls) ls.value=l;
-  var lm = document.getElementById('lang-select-mobile'); if(lm) lm.value=l;
+  var ls = document.getElementById('lang-select'); if (ls) ls.value = l;
+  var lm = document.getElementById('lang-select-mobile'); if (lm) lm.value = l;
   document.documentElement.lang = l;
-  document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+  document.documentElement.dir  = l === 'ar' ? 'rtl' : 'ltr';
 }
+function isDesktop() { return window.innerWidth >= 768; }
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(function() { el.classList.remove('show'); }, 2200);
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeSheets(); closeSettings();
+    document.querySelectorAll('.desk-panel').forEach(function(p) { p.classList.remove('open'); });
+  }
+});
 
-// ── GROUPS ──
-function getGroup(id) { return groups.find(function(g) { return g.id===id; }); }
+// ════════════════════════════════════════════════════
+// SHEETS / PANELS
+// ════════════════════════════════════════════════════
+function openSheet(id)   { document.getElementById('overlay').classList.add('open'); document.getElementById(id).classList.add('open'); }
+function closeSheets()   { document.getElementById('overlay').classList.remove('open'); document.querySelectorAll('.sheet').forEach(function(s) { s.classList.remove('open'); }); }
+function openDeskPanel(id)  { document.getElementById(id).classList.add('open'); }
+function closeDeskPanel(id) { document.getElementById(id).classList.remove('open'); }
+function openSettings()  {
+  if (isDesktop()) { renderSettingsGroups(); document.getElementById('settings-panel').classList.add('open'); }
+  else openSheet('sheet-settings-mobile');
+}
+function closeSettings() { document.getElementById('settings-panel').classList.remove('open'); }
+
+// ════════════════════════════════════════════════════
+// GROUPS
+// ════════════════════════════════════════════════════
+function getGroup(id) { return groups.find(function(g) { return g.id == id; }); }
+
 async function addGroup() {
   var name = document.getElementById('fg-name').value.trim();
-  if (!name) { toast('⚠️ Enter a group name'); return; }
-  var result = await sb.from('groups').insert({name:name,color:selectedColor,user_id:currentUser.id}).select().single();
-  if (result.error) { toast('❌ '+result.error.message); return; }
-  groups.push(result.data);
+  if (!name) { toast('Enter a group name'); return; }
+  var res = await sb.from('groups').insert({ name: name, color: selectedColor, user_id: currentUser.id }).select().single();
+  if (res.error) { toast('Error: ' + res.error.message); return; }
+  groups.push(res.data);
   document.getElementById('fg-name').value = '';
-  renderGroupsSheet(); renderSettingsGroups(); renderSites(); toast('Added ✓');
+  renderGroupsSheet(); renderSettingsGroups(); renderSites(); toast('Group added');
 }
+
 async function deleteGroup(id) {
   if (!confirm('Delete this group?')) return;
   await sb.from('groups').delete().eq('id', id);
-  await sb.from('sites').update({group_id:null}).eq('group_id', id);
-  groups = groups.filter(function(g) { return g.id!==id; });
-  sites = sites.map(function(s) { return s.groupId===id ? Object.assign(s,{groupId:null,group_id:null}) : s; });
+  await sb.from('sites').update({ group_id: null }).eq('group_id', id);
+  groups = groups.filter(function(g) { return g.id != id; });
+  sites  = sites.map(function(s) { if (s.groupId == id) { s.groupId = null; s.group_id = null; } return s; });
   renderGroupsSheet(); renderSettingsGroups(); renderSites(); toast('Deleted');
 }
+
 function openGroupsSheet() { openSheet('sheet-groups'); renderGroupsSheet(); }
+
 function renderGroupsSheet() {
   var c = document.getElementById('groups-list-sheet');
-  if (!groups.length) { c.innerHTML='<div style="padding:14px 16px;font-size:15px;color:var(--lbl3)">No groups yet</div>'; return; }
+  if (!groups.length) { c.innerHTML = '<div style="padding:14px 16px;font-size:15px;color:var(--lbl3)">No groups yet</div>'; return; }
   c.innerHTML = groups.map(function(g) {
-    return '<div class="field-row" style="min-height:48px"><div class="group-color-dot" style="background:'+g.color+';width:14px;height:14px;border-radius:50%"></div><span style="flex:1;font-size:17px;color:var(--lbl)">'+esc(g.name)+'</span><span style="font-size:13px;color:var(--lbl3);margin-right:8px">'+sites.filter(function(s){return s.groupId===g.id;}).length+'</span><button onclick="deleteGroup('+g.id+')" style="background:transparent;border:none;color:var(--red);cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button></div>';
+    var cnt = sites.filter(function(s) { return s.groupId == g.id; }).length;
+    return '<div class="field-row" style="min-height:48px">'
+      + '<div class="group-color-dot" style="background:' + g.color + ';width:14px;height:14px;border-radius:50%"></div>'
+      + '<span style="flex:1;font-size:17px;color:var(--lbl)">' + esc(g.name) + '</span>'
+      + '<span style="font-size:13px;color:var(--lbl3);margin-right:8px">' + cnt + '</span>'
+      + '<button data-gid="' + g.id + '" onclick="deleteGroup(this.dataset.gid)" style="background:transparent;border:none;color:var(--red);cursor:pointer">'
+      + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">'
+      + '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>'
+      + '</svg></button></div>';
   }).join('');
 }
+
 function renderSettingsGroups() {
-  var c = document.getElementById('sd-groups-list'); if(!c) return;
-  if (!groups.length) { c.innerHTML='<div style="padding:12px 14px;font-size:15px;color:var(--lbl3)">No groups yet</div>'; return; }
+  var c = document.getElementById('sd-groups-list'); if (!c) return;
+  if (!groups.length) { c.innerHTML = '<div style="padding:12px 14px;font-size:15px;color:var(--lbl3)">No groups yet</div>'; return; }
   c.innerHTML = groups.map(function(g) {
-    return '<div class="settings-row"><div class="group-color-dot" style="background:'+g.color+';width:12px;height:12px;border-radius:50%"></div><span class="settings-label">'+esc(g.name)+'</span><span style="font-size:13px;color:var(--lbl3)">'+sites.filter(function(s){return s.groupId===g.id;}).length+'</span></div>';
+    return '<div class="settings-row">'
+      + '<div class="group-color-dot" style="background:' + g.color + ';width:12px;height:12px;border-radius:50%"></div>'
+      + '<span class="settings-label">' + esc(g.name) + '</span>'
+      + '<span style="font-size:13px;color:var(--lbl3)">' + sites.filter(function(s){return s.groupId==g.id;}).length + '</span>'
+      + '</div>';
   }).join('');
 }
+
 function openAssignGroup(siteId) {
+  siteId = parseInt(siteId);
   assignSiteId = siteId;
-  var site = sites.find(function(s) { return s.id===siteId; });
+  var site = sites.find(function(s) { return s.id == siteId; });
   var c = document.getElementById('group-assign-list');
-  var html = '<div class="group-list-item" onclick="assignGroup(null)"><div class="group-color-dot" style="background:var(--lbl4);width:14px;height:14px;border-radius:50%"></div><span style="font-size:17px;color:var(--lbl)">No group</span>'+((!site||!site.groupId)?'<svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>';
+  var html = '<div class="group-list-item" onclick="assignGroup(null)">'
+    + '<div class="group-color-dot" style="background:var(--lbl4);width:14px;height:14px;border-radius:50%"></div>'
+    + '<span style="font-size:17px;color:var(--lbl)">No group</span>'
+    + (!site || !site.groupId ? '<svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>' : '')
+    + '</div>';
   html += groups.map(function(g) {
-    return '<div class="group-list-item" onclick="assignGroup('+g.id+')"><div class="group-color-dot" style="background:'+g.color+';width:14px;height:14px;border-radius:50%"></div><span style="font-size:17px;color:var(--lbl)">'+esc(g.name)+'</span>'+(site&&site.groupId===g.id?'<svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>';
+    var checked = site && site.groupId == g.id;
+    return '<div class="group-list-item" data-gid="' + g.id + '" onclick="assignGroup(this.dataset.gid)">'
+      + '<div class="group-color-dot" style="background:' + g.color + ';width:14px;height:14px;border-radius:50%"></div>'
+      + '<span style="font-size:17px;color:var(--lbl)">' + esc(g.name) + '</span>'
+      + (checked ? '<svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>' : '')
+      + '</div>';
   }).join('');
   c.innerHTML = html;
   openSheet('sheet-group-assign');
 }
+
 async function assignGroup(groupId) {
-  var s = sites.find(function(x) { return x.id===assignSiteId; }); if(!s) return;
-  await sb.from('sites').update({group_id:groupId}).eq('id', s.id);
-  s.groupId = groupId||null; s.group_id = groupId||null;
-  closeSheets(); renderSites(); toast('Saved ✓');
-}
-function selectColor(el) {
-  document.querySelectorAll('.color-swatch').forEach(function(s) { s.classList.remove('selected'); });
-  el.classList.add('selected'); selectedColor = el.dataset.color;
-}
-function toggleGroupCollapse(gid) {
-  if (collapsedGroups.has(gid)) collapsedGroups.delete(gid); else collapsedGroups.add(gid);
-  saveC(); renderSites();
+  if (groupId) groupId = parseInt(groupId);
+  var s = sites.find(function(x) { return x.id == assignSiteId; }); if (!s) return;
+  await sb.from('sites').update({ group_id: groupId || null }).eq('id', s.id);
+  s.groupId = groupId || null; s.group_id = groupId || null;
+  closeSheets(); renderSites(); toast('Saved');
 }
 
-// ── SITES ──
+function selectColor(el) {
+  document.querySelectorAll('.color-swatch').forEach(function(s) { s.classList.remove('selected'); });
+  el.classList.add('selected');
+  selectedColor = el.dataset.color;
+}
+
+function toggleGroupCollapse(gid) {
+  if (collapsedGroups.has(gid)) collapsedGroups.delete(gid);
+  else collapsedGroups.add(gid);
+  saveCollapsed(); renderSites();
+}
+
+// ════════════════════════════════════════════════════
+// SITES
+// ════════════════════════════════════════════════════
 function setFilter(btn) {
   document.querySelectorAll('.seg-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active'); siteFilter = btn.dataset.f; renderSites();
+  btn.classList.add('active');
+  siteFilter = btn.dataset.f;
+  renderSites();
 }
+
 function renderSites() {
-  var q = document.getElementById('search-sites').value.toLowerCase();
+  var q = (document.getElementById('search-sites').value || '').toLowerCase();
   var items = sites.filter(function(s) {
-    var mq = !q || [s.name,s.url,s.category,s.notes].some(function(v) { return (v||'').toLowerCase().includes(q); });
-    var mf = siteFilter==='all' ? true : siteFilter==='visited' ? !!s.lastVisit : !s.lastVisit;
+    var mq = !q || [s.name, s.url, s.category, s.notes].some(function(v) { return (v || '').toLowerCase().includes(q); });
+    var mf = siteFilter === 'all' ? true : siteFilter === 'visited' ? !!s.lastVisit : !s.lastVisit;
     return mq && mf;
   });
-  document.getElementById('stats-row').innerHTML = '<div class="stat-pill"><b>'+sites.length+'</b> sites</div><div class="stat-pill"><b>'+sites.filter(function(s){return s.lastVisit;}).length+'</b> visited</div>';
-  var lk = siteFilter==='all'?'All Sites':siteFilter==='visited'?'Visited':'Not Visited';
+  document.getElementById('stats-row').innerHTML =
+    '<div class="stat-pill"><b>' + sites.length + '</b> sites</div>' +
+    '<div class="stat-pill"><b>' + sites.filter(function(s){return s.lastVisit;}).length + '</b> visited</div>';
+  var lk = siteFilter === 'all' ? 'All Sites' : siteFilter === 'visited' ? 'Visited' : 'Not Visited';
   document.getElementById('sites-lbl').textContent = lk;
   document.getElementById('sites-cnt').textContent = items.length || '';
-  var c = document.getElementById('sites-list');
-  if (!items.length) { c.innerHTML='<div class="empty"><div class="empty-icon">🗂️</div><h3>No Sites Yet</h3><p>Tap + to add your first site</p></div>'; return; }
-  var grouped = {};
-  items.forEach(function(s) { var key = s.groupId ? String(s.groupId) : '__none__'; if(!grouped[key]) grouped[key]=[]; grouped[key].push(s); });
-  var html = '';
-  function renderGroup(gid, arr, label, color) {
-    var col = collapsedGroups.has(gid);
-    html += '<div class="sites-group"><div class="group-header-row" onclick="toggleGroupCollapse(''+gid+'')"><div class="group-color-dot" style="background:'+color+'"></div><span class="group-header-name">'+esc(label)+'</span><span class="group-header-count">'+arr.length+'</span><span class="group-chevron'+(col?'':' open')+'"><svg width="7" height="12" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 1 7 7 1 13"/></svg></span></div><div class="group-body'+(col?' collapsed':'')+'">';
-    arr.forEach(function(s,i) { html += siteRowHtml(s,i); });
-    html += '</div></div>';
+  var container = document.getElementById('sites-list');
+  if (!items.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">&#128193;</div><h3>No Sites Yet</h3><p>Tap + to add your first site</p></div>';
+    return;
   }
-  groups.forEach(function(g) { var arr=grouped[String(g.id)]; if(arr&&arr.length) renderGroup(g.id,arr,g.name,g.color); });
-  if (grouped['__none__'] && grouped['__none__'].length) renderGroup('__none__', grouped['__none__'], 'Ungrouped', 'var(--lbl4)');
-  c.innerHTML = html;
+  var grouped = {};
+  items.forEach(function(s) {
+    var key = s.groupId ? String(s.groupId) : '__none__';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(s);
+  });
+  var html = '';
+  groups.forEach(function(g) {
+    var arr = grouped[String(g.id)];
+    if (arr && arr.length) html += buildGroupHtml(g.id, arr, g.name, g.color);
+  });
+  if (grouped['__none__'] && grouped['__none__'].length) {
+    html += buildGroupHtml('__none__', grouped['__none__'], 'Ungrouped', 'var(--lbl4)');
+  }
+  container.innerHTML = html;
 }
-function siteRowHtml(s,i) {
-  var f=fav(s.url), ts=fmt(s.lastVisit), cls=isRecent(s.lastVisit)?'green':'';
-  var host=''; try{host=new URL(s.url.startsWith('http')?s.url:'https://'+s.url).hostname;}catch(e){host=s.url;}
-  return '<div><div class="site-row" onclick="toggleSiteActions('+s.id+')" style="animation-delay:'+(i*.025)+'s"><div class="favicon-wrap">'+(f?'<img src="'+f+'" onerror="this.parentElement.innerHTML='🌐'" alt=""/>':'🌐')+'</div><div class="row-body"><div class="row-name">'+esc(s.name)+'</div><div class="row-sub">'+esc(s.category||host)+'</div>'+(s.notes?'<div class="row-note-preview">'+esc(s.notes)+'</div>':'')+'</div><div class="row-meta"><div class="timestamp '+cls+'">'+(ts||'Never')+'</div><svg width="7" height="12" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--lbl4)"><polyline points="1 1 7 7 1 13"/></svg></div></div><div class="row-actions" id="sa-'+s.id+'"><button class="action-btn visit" onclick="visitSite('+s.id+')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Open</button><button class="action-btn edit" onclick="openEditSite('+s.id+')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button><button class="action-btn grp" onclick="openAssignGroup('+s.id+')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Group</button><button class="action-btn delete" onclick="deleteSite('+s.id+')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>Delete</button></div></div>';
+
+function buildGroupHtml(gid, arr, label, color) {
+  var col = collapsedGroups.has(String(gid));
+  var chevronClass = 'group-chevron' + (col ? '' : ' open');
+  var bodyClass = 'group-body' + (col ? ' collapsed' : '');
+  var html = '';
+  html += '<div class="sites-group">';
+  html += '<div class="group-header-row" data-gid="' + gid + '" onclick="toggleGroupCollapse(this.dataset.gid)">';
+  html += '<div class="group-color-dot" style="background:' + color + '"></div>';
+  html += '<span class="group-header-name">' + esc(label) + '</span>';
+  html += '<span class="group-header-count">' + arr.length + '</span>';
+  html += '<span class="' + chevronClass + '"><svg width="7" height="12" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 1 7 7 1 13"/></svg></span>';
+  html += '</div>';
+  html += '<div class="' + bodyClass + '">';
+  arr.forEach(function(s, i) { html += buildSiteRow(s, i); });
+  html += '</div></div>';
+  return html;
 }
-function toggleSiteActions(id) {
-  if (openSiteAct && openSiteAct!==id) { var p=document.getElementById('sa-'+openSiteAct); if(p) p.classList.remove('open'); }
-  var el = document.getElementById('sa-'+id); if(!el) return;
-  openSiteAct = el.classList.toggle('open') ? id : null;
+
+function buildSiteRow(s, i) {
+  var f   = fav(s.url);
+  var ts  = fmt(s.lastVisit);
+  var cls = isRecent(s.lastVisit) ? 'green' : '';
+  var host = '';
+  try { host = new URL(s.url.startsWith('http') ? s.url : 'https://' + s.url).hostname; } catch(e) { host = s.url; }
+  var favHtml = f
+    ? '<img src="' + f + '" onerror="this.outerHTML=\'&#127760;\'" alt=""/>'
+    : '&#127760;';
+  var html = '';
+  html += '<div>';
+  html += '<div class="site-row" data-sid="' + s.id + '" onclick="toggleSiteActions(this.dataset.sid)" style="animation-delay:' + (i * 0.025) + 's">';
+  html += '<div class="favicon-wrap">' + favHtml + '</div>';
+  html += '<div class="row-body">';
+  html += '<div class="row-name">' + esc(s.name) + '</div>';
+  html += '<div class="row-sub">' + esc(s.category || host) + '</div>';
+  if (s.notes) html += '<div class="row-note-preview">' + esc(s.notes) + '</div>';
+  html += '</div>';
+  html += '<div class="row-meta"><div class="timestamp ' + cls + '">' + (ts || 'Never') + '</div>';
+  html += '<svg width="7" height="12" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--lbl4)"><polyline points="1 1 7 7 1 13"/></svg>';
+  html += '</div></div>';
+  html += '<div class="row-actions" id="sa-' + s.id + '">';
+  html += '<button class="action-btn visit"  data-sid="' + s.id + '" onclick="visitSite(this.dataset.sid)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Open</button>';
+  html += '<button class="action-btn edit"   data-sid="' + s.id + '" onclick="openEditSite(this.dataset.sid)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>';
+  html += '<button class="action-btn grp"    data-sid="' + s.id + '" onclick="openAssignGroup(this.dataset.sid)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Group</button>';
+  html += '<button class="action-btn delete" data-sid="' + s.id + '" onclick="deleteSite(this.dataset.sid)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>Delete</button>';
+  html += '</div></div>';
+  return html;
 }
-async function visitSite(id) {
-  var s = sites.find(function(x){return x.id===id;}); if(!s) return;
+
+function toggleSiteActions(sid) {
+  if (openSiteAct && openSiteAct !== sid) {
+    var prev = document.getElementById('sa-' + openSiteAct);
+    if (prev) prev.classList.remove('open');
+  }
+  var el = document.getElementById('sa-' + sid); if (!el) return;
+  openSiteAct = el.classList.toggle('open') ? sid : null;
+}
+
+async function visitSite(sid) {
+  var s = sites.find(function(x) { return x.id == sid; }); if (!s) return;
   var now = new Date().toISOString();
-  await sb.from('sites').update({last_visit:now}).eq('id',id);
-  s.lastVisit=now; s.last_visit=now;
-  renderSites(); toast('Opening…'); window.open(s.url,'_blank');
+  await sb.from('sites').update({ last_visit: now }).eq('id', s.id);
+  s.lastVisit = now; s.last_visit = now;
+  renderSites(); toast('Opening…'); window.open(s.url, '_blank');
 }
-async function deleteSite(id) {
+
+async function deleteSite(sid) {
   if (!confirm('Delete this site?')) return;
-  await sb.from('sites').delete().eq('id',id);
-  sites = sites.filter(function(x){return x.id!==id;}); renderSites(); toast('Deleted');
+  await sb.from('sites').delete().eq('id', parseInt(sid));
+  sites = sites.filter(function(x) { return x.id != sid; });
+  renderSites(); toast('Deleted');
 }
+
 function openAddSite() {
-  editSiteId=null;
-  document.getElementById('sheet-site-title').textContent='New Site';
-  document.getElementById('btn-site-confirm').textContent='Add Site';
-  ['fs-name','fs-url','fs-cat','fs-notes'].forEach(function(id){document.getElementById(id).value='';});
+  editSiteId = null;
+  document.getElementById('sheet-site-title').textContent = 'New Site';
+  document.getElementById('btn-site-confirm').textContent = 'Add Site';
+  ['fs-name','fs-url','fs-cat','fs-notes'].forEach(function(id) { document.getElementById(id).value = ''; });
   openSheet('sheet-site');
 }
-function openEditSite(id) {
-  var s=sites.find(function(x){return x.id===id;}); if(!s) return;
-  editSiteId=id;
-  document.getElementById('sheet-site-title').textContent='Edit Site';
-  document.getElementById('btn-site-confirm').textContent='Save Changes';
-  document.getElementById('fs-name').value=s.name;
-  document.getElementById('fs-url').value=s.url;
-  document.getElementById('fs-cat').value=s.category||'';
-  document.getElementById('fs-notes').value=s.notes||'';
+
+function openEditSite(sid) {
+  var s = sites.find(function(x) { return x.id == sid; }); if (!s) return;
+  editSiteId = s.id;
+  document.getElementById('sheet-site-title').textContent = 'Edit Site';
+  document.getElementById('btn-site-confirm').textContent = 'Save Changes';
+  document.getElementById('fs-name').value  = s.name;
+  document.getElementById('fs-url').value   = s.url;
+  document.getElementById('fs-cat').value   = s.category || '';
+  document.getElementById('fs-notes').value = s.notes || '';
   openSheet('sheet-site');
 }
+
 async function confirmSite() {
-  var name=document.getElementById('fs-name').value.trim();
-  var url=document.getElementById('fs-url').value.trim();
-  var cat=document.getElementById('fs-cat').value.trim();
-  var notes2=document.getElementById('fs-notes').value.trim();
-  if(!name||!url){toast('⚠️ Name and URL required');return;}
-  var u=url; if(!/^https?:\/\//i.test(u)) u='https://'+u;
-  if(editSiteId){
-    var r=await sb.from('sites').update({name:name,url:u,category:cat||null,notes:notes2||null}).eq('id',editSiteId);
-    if(r.error){toast('❌ '+r.error.message);return;}
-    var s=sites.find(function(x){return x.id===editSiteId;}); Object.assign(s,{name:name,url:u,category:cat,notes:notes2});
-    toast('Saved ✓');
-  }else{
-    var r=await sb.from('sites').insert({name:name,url:u,category:cat||null,notes:notes2||null,user_id:currentUser.id}).select().single();
-    if(r.error){toast('❌ '+r.error.message);return;}
-    sites.unshift(Object.assign(r.data,{lastVisit:r.data.last_visit,addedAt:r.data.added_at,groupId:r.data.group_id}));
-    toast('Added ✓');
+  var name  = document.getElementById('fs-name').value.trim();
+  var url   = document.getElementById('fs-url').value.trim();
+  var cat   = document.getElementById('fs-cat').value.trim();
+  var notes2 = document.getElementById('fs-notes').value.trim();
+  if (!name || !url) { toast('Name and URL required'); return; }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if (editSiteId) {
+    var r = await sb.from('sites').update({ name: name, url: url, category: cat || null, notes: notes2 || null }).eq('id', editSiteId);
+    if (r.error) { toast('Error: ' + r.error.message); return; }
+    var s = sites.find(function(x) { return x.id == editSiteId; });
+    Object.assign(s, { name: name, url: url, category: cat, notes: notes2 });
+    toast('Saved');
+  } else {
+    var r = await sb.from('sites').insert({ name: name, url: url, category: cat || null, notes: notes2 || null, user_id: currentUser.id }).select().single();
+    if (r.error) { toast('Error: ' + r.error.message); return; }
+    var ns = r.data; ns.lastVisit = ns.last_visit; ns.addedAt = ns.added_at; ns.groupId = ns.group_id;
+    sites.unshift(ns);
+    toast('Added');
   }
   closeSheets(); renderSites();
 }
 
-// ── NOTES ──
+// ════════════════════════════════════════════════════
+// NOTES
+// ════════════════════════════════════════════════════
 function renderNotes() {
-  var q=document.getElementById('search-notes').value.toLowerCase();
-  var items=notes.filter(function(n){return !q||[n.title,n.body].some(function(v){return (v||'').toLowerCase().includes(q);});});
-  var c=document.getElementById('notes-list');
-  if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">📝</div><h3>No Notes</h3><p>Tap + to write your first note</p></div>';return;}
-  var unread=items.filter(function(n){return !n.read;}),read=items.filter(function(n){return n.read;});
-  var html='';
-  if(unread.length) html+='<div class="section-header"><span class="section-title">Unread</span><span class="section-count">'+unread.length+'</span></div><div class="notes-group">'+unread.map(noteRow).join('')+'</div>';
-  if(read.length) html+='<div class="section-header"><span class="section-title">Read</span><span class="section-count">'+read.length+'</span></div><div class="notes-group">'+read.map(noteRow).join('')+'</div>';
-  c.innerHTML=html;
-  var ub=notes.filter(function(n){return !n.read;}).length;
-  var sb2=document.getElementById('sb-notes-badge'); if(sb2){sb2.style.display=ub?'flex':'none';sb2.textContent=ub;}
-}
-function noteRow(n,i) {
-  var dotCls=(n.alertAt||n.alertAfter)?'alert-dot':n.read?'read':'unread';
-  var hasPending=(n.alertAt&&new Date(n.alertAt)>new Date())||n.alertAfter;
-  return '<div><div class="note-row" onclick="openNoteDetail('+n.id+')" style="animation-delay:'+(i*.03)+'s"><div class="note-dot '+dotCls+'"></div><div class="note-content"><div class="note-title '+(n.read?'':'unread')+'">'+esc(n.title||'Untitled')+'</div><div class="note-body-preview">'+esc(n.body||'')+'</div></div><div class="note-meta-col"><div class="note-time">'+(fmt(n.createdAt)||'')+'</div>'+(hasPending?'<div class="note-alert-badge">⏰</div>':'')+'</div></div></div>';
-}
-async function openNoteDetail(id) {
-  var n=notes.find(function(x){return x.id===id;}); if(!n) return;
-  detailNoteId=id;
-  if(!n.read){
-    await sb.from('notes').update({read:true}).eq('id',id);
-    n.read=true; renderNotes(); updateBadge();
+  var q = (document.getElementById('search-notes').value || '').toLowerCase();
+  var items = notes.filter(function(n) {
+    return !q || [n.title, n.body].some(function(v) { return (v || '').toLowerCase().includes(q); });
+  });
+  var container = document.getElementById('notes-list');
+  if (!items.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">&#128221;</div><h3>No Notes</h3><p>Tap + to write your first note</p></div>';
+    return;
   }
-  var metaStr=new Date(n.createdAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'});
-  var aHtml='';
-  if(n.alertAt||n.alertAfter){
-    var desc=''; if(n.alertAt) desc+=new Date(n.alertAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}); if(n.alertAfter){if(desc)desc+=' · ';desc+=fmtDur(n.alertAfter);}
-    aHtml='<div class="alert-info-box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'+(n.alertFired?'✅ ':'⏳ ')+esc(desc)+'</div>';
+  var unread = items.filter(function(n) { return !n.read; });
+  var read   = items.filter(function(n) { return n.read; });
+  var html = '';
+  if (unread.length) html += '<div class="section-header"><span class="section-title">Unread</span><span class="section-count">' + unread.length + '</span></div><div class="notes-group">' + unread.map(buildNoteRow).join('') + '</div>';
+  if (read.length)   html += '<div class="section-header"><span class="section-title">Read</span><span class="section-count">' + read.length + '</span></div><div class="notes-group">' + read.map(buildNoteRow).join('') + '</div>';
+  container.innerHTML = html;
+  var ub = notes.filter(function(n) { return !n.read; }).length;
+  var badge = document.getElementById('sb-notes-badge');
+  if (badge) { badge.style.display = ub ? 'flex' : 'none'; badge.textContent = ub; }
+}
+
+function buildNoteRow(n, i) {
+  var dotCls = (n.alertAt || n.alertAfter) ? 'alert-dot' : n.read ? 'read' : 'unread';
+  var hasPending = (n.alertAt && new Date(n.alertAt) > new Date()) || n.alertAfter;
+  return '<div><div class="note-row" data-nid="' + n.id + '" onclick="openNoteDetail(this.dataset.nid)" style="animation-delay:' + (i * 0.03) + 's">'
+    + '<div class="note-dot ' + dotCls + '"></div>'
+    + '<div class="note-content"><div class="note-title ' + (n.read ? '' : 'unread') + '">' + esc(n.title || 'Untitled') + '</div>'
+    + '<div class="note-body-preview">' + esc(n.body || '') + '</div></div>'
+    + '<div class="note-meta-col"><div class="note-time">' + (fmt(n.createdAt) || '') + '</div>'
+    + (hasPending ? '<div class="note-alert-badge">&#9200;</div>' : '') + '</div>'
+    + '</div></div>';
+}
+
+async function openNoteDetail(nid) {
+  var n = notes.find(function(x) { return x.id == nid; }); if (!n) return;
+  detailNoteId = n.id;
+  if (!n.read) {
+    await sb.from('notes').update({ read: true }).eq('id', n.id);
+    n.read = true; renderNotes(); updateBadge();
   }
-  if(isDesktop()){
-    document.getElementById('desk-detail-title').textContent=n.title||'Note';
-    document.getElementById('desk-detail-meta').textContent=metaStr;
-    document.getElementById('desk-detail-body').textContent=n.body||'';
-    document.getElementById('desk-detail-alert-box').innerHTML=aHtml;
+  var metaStr = new Date(n.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  var aHtml = '';
+  if (n.alertAt || n.alertAfter) {
+    var desc = '';
+    if (n.alertAt) desc += new Date(n.alertAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    if (n.alertAfter) { if (desc) desc += ' · '; desc += fmtDur(n.alertAfter); }
+    aHtml = '<div class="alert-info-box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>' + (n.alertFired ? '&#9989; ' : '&#8987; ') + esc(desc) + '</div>';
+  }
+  if (isDesktop()) {
+    document.getElementById('desk-detail-title').textContent = n.title || 'Note';
+    document.getElementById('desk-detail-meta').textContent  = metaStr;
+    document.getElementById('desk-detail-body').textContent  = n.body || '';
+    document.getElementById('desk-detail-alert-box').innerHTML = aHtml;
     openDeskPanel('desk-note-detail-panel');
-  }else{
-    document.getElementById('detail-title').textContent=n.title||'Note';
-    document.getElementById('detail-meta').textContent=metaStr;
-    document.getElementById('detail-body').textContent=n.body||'';
-    document.getElementById('detail-alert-box').innerHTML=aHtml;
+  } else {
+    document.getElementById('detail-title').textContent = n.title || 'Note';
+    document.getElementById('detail-meta').textContent  = metaStr;
+    document.getElementById('detail-body').textContent  = n.body || '';
+    document.getElementById('detail-alert-box').innerHTML = aHtml;
     openSheet('sheet-note-detail');
   }
 }
+
 function openAddNote() {
-  editNoteId=null;
-  if(isDesktop()){
-    document.getElementById('desk-note-title').textContent='New Note';
-    document.getElementById('desk-btn-note-confirm').textContent='Add Note';
-    ['dfn-title','dfn-body'].forEach(function(id){document.getElementById(id).value='';}); 
-    document.getElementById('dfn-alert-toggle').checked=false;
-    document.getElementById('dfn-at-date').value=''; document.getElementById('dfn-at-after').value='';
-    document.getElementById('desk-alert-fields').style.display='none';
+  editNoteId = null;
+  if (isDesktop()) {
+    document.getElementById('desk-note-title').textContent = 'New Note';
+    document.getElementById('desk-btn-note-confirm').textContent = 'Add Note';
+    ['dfn-title','dfn-body'].forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('dfn-alert-toggle').checked = false;
+    document.getElementById('dfn-at-date').value = ''; document.getElementById('dfn-at-after').value = '';
+    document.getElementById('desk-alert-fields').style.display = 'none';
     openDeskPanel('desk-note-panel');
-  }else{
-    document.getElementById('sheet-note-title').textContent='New Note';
-    document.getElementById('btn-note-confirm').textContent='Add Note';
-    ['fn-title','fn-body'].forEach(function(id){document.getElementById(id).value='';}); 
-    document.getElementById('fn-alert-toggle').checked=false;
-    document.getElementById('fn-at-date').value=''; document.getElementById('fn-at-after').value='';
-    document.getElementById('alert-fields').style.display='none';
+  } else {
+    document.getElementById('sheet-note-title').textContent = 'New Note';
+    document.getElementById('btn-note-confirm').textContent = 'Add Note';
+    ['fn-title','fn-body'].forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('fn-alert-toggle').checked = false;
+    document.getElementById('fn-at-date').value = ''; document.getElementById('fn-at-after').value = '';
+    document.getElementById('alert-fields').style.display = 'none';
     openSheet('sheet-note');
   }
 }
+
 function openEditNote(id) {
-  var n=notes.find(function(x){return x.id===id;}); if(!n) return;
-  editNoteId=id;
-  var hasAlert=!!(n.alertAt||n.alertAfter);
+  var n = notes.find(function(x) { return x.id == id; }); if (!n) return;
+  editNoteId = n.id;
+  var hasAlert = !!(n.alertAt || n.alertAfter);
   function fillFields(prefix) {
-    document.getElementById(prefix+'-title').value=n.title||'';
-    document.getElementById(prefix+'-body').value=n.body||'';
-    document.getElementById(prefix+'-alert-toggle').checked=hasAlert;
-    if(n.alertAt){var d=new Date(n.alertAt),pad=function(v){return String(v).padStart(2,'0');};document.getElementById(prefix+'-at-date').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());}else document.getElementById(prefix+'-at-date').value='';
-    document.getElementById(prefix+'-at-after').value=n.alertAfter||'';
+    document.getElementById(prefix + '-title').value = n.title || '';
+    document.getElementById(prefix + '-body').value  = n.body  || '';
+    document.getElementById(prefix + '-alert-toggle').checked = hasAlert;
+    if (n.alertAt) {
+      var d = new Date(n.alertAt), pad = function(v) { return String(v).padStart(2,'0'); };
+      document.getElementById(prefix + '-at-date').value = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    } else document.getElementById(prefix + '-at-date').value = '';
+    document.getElementById(prefix + '-at-after').value = n.alertAfter || '';
   }
-  if(isDesktop()){
-    document.getElementById('desk-note-title').textContent='Edit Note';
-    document.getElementById('desk-btn-note-confirm').textContent='Save Changes';
+  if (isDesktop()) {
+    document.getElementById('desk-note-title').textContent = 'Edit Note';
+    document.getElementById('desk-btn-note-confirm').textContent = 'Save Changes';
     fillFields('dfn');
-    document.getElementById('desk-alert-fields').style.display=hasAlert?'flex':'none';
+    document.getElementById('desk-alert-fields').style.display = hasAlert ? 'flex' : 'none';
     openDeskPanel('desk-note-panel');
-  }else{
-    document.getElementById('sheet-note-title').textContent='Edit Note';
-    document.getElementById('btn-note-confirm').textContent='Save Changes';
+  } else {
+    document.getElementById('sheet-note-title').textContent = 'Edit Note';
+    document.getElementById('btn-note-confirm').textContent = 'Save Changes';
     fillFields('fn');
-    document.getElementById('alert-fields').style.display=hasAlert?'flex':'none';
+    document.getElementById('alert-fields').style.display = hasAlert ? 'flex' : 'none';
     openSheet('sheet-note');
   }
 }
-function editNoteFromDetail(){closeSheets();setTimeout(function(){openEditNote(detailNoteId);},200);}
-function deleteNoteFromDetail(){closeSheets();setTimeout(function(){deleteNote(detailNoteId);},200);}
-function deskEditNoteFromDetail(){closeDeskPanel('desk-note-detail-panel');setTimeout(function(){openEditNote(detailNoteId);},200);}
-function deskDeleteNoteFromDetail(){closeDeskPanel('desk-note-detail-panel');setTimeout(function(){deleteNote(detailNoteId);},200);}
-function toggleAlertFields(){document.getElementById('alert-fields').style.display=document.getElementById('fn-alert-toggle').checked?'flex':'none';}
-function deskToggleAlertFields(){document.getElementById('desk-alert-fields').style.display=document.getElementById('dfn-alert-toggle').checked?'flex':'none';}
+
+function editNoteFromDetail()     { closeSheets(); setTimeout(function() { openEditNote(detailNoteId); }, 200); }
+function deleteNoteFromDetail()   { closeSheets(); setTimeout(function() { deleteNote(detailNoteId); }, 200); }
+function deskEditNoteFromDetail() { closeDeskPanel('desk-note-detail-panel'); setTimeout(function() { openEditNote(detailNoteId); }, 200); }
+function deskDeleteNoteFromDetail(){ closeDeskPanel('desk-note-detail-panel'); setTimeout(function() { deleteNote(detailNoteId); }, 200); }
+function toggleAlertFields()     { document.getElementById('alert-fields').style.display = document.getElementById('fn-alert-toggle').checked ? 'flex' : 'none'; }
+function deskToggleAlertFields() { document.getElementById('desk-alert-fields').style.display = document.getElementById('dfn-alert-toggle').checked ? 'flex' : 'none'; }
 
 async function _saveNote(prefix) {
-  var title=document.getElementById(prefix+'-title').value.trim();
-  var body=document.getElementById(prefix+'-body').value.trim();
-  if(!title){toast('⚠️ Title required');return;}
-  var hasAlert=document.getElementById(prefix+'-alert-toggle').checked;
-  var atDateVal=document.getElementById(prefix+'-at-date').value;
-  var atAfterVal=document.getElementById(prefix+'-at-after').value;
-  var alertAt=hasAlert&&atDateVal?new Date(atDateVal).toISOString():null;
-  var alertAfter=hasAlert&&atAfterVal?parseInt(atAfterVal):null;
-  if(editNoteId){
-    var r=await sb.from('notes').update({title:title,body:body,alert_at:alertAt,alert_after:alertAfter,alert_fired:false}).eq('id',editNoteId);
-    if(r.error){toast('❌ '+r.error.message);return;}
-    var n=notes.find(function(x){return x.id===editNoteId;}); Object.assign(n,{title:title,body:body,alertAt:alertAt,alertAfter:alertAfter,alertFired:false});
-    cancelAlerts(editNoteId); if(alertAt||alertAfter) scheduleAlerts(n);
-    toast('Saved ✓');
-  }else{
-    var r=await sb.from('notes').insert({title:title,body:body,alert_at:alertAt,alert_after:alertAfter,read:false,alert_fired:false,user_id:currentUser.id}).select().single();
-    if(r.error){toast('❌ '+r.error.message);return;}
-    var n=Object.assign(r.data,{alertAt:r.data.alert_at,alertAfter:r.data.alert_after,alertFired:r.data.alert_fired,createdAt:r.data.created_at});
-    notes.unshift(n); if(alertAt||alertAfter) scheduleAlerts(n);
-    toast('Added ✓');
+  var title = document.getElementById(prefix + '-title').value.trim();
+  var body  = document.getElementById(prefix + '-body').value.trim();
+  if (!title) { toast('Title required'); return; }
+  var hasAlert  = document.getElementById(prefix + '-alert-toggle').checked;
+  var atDateVal = document.getElementById(prefix + '-at-date').value;
+  var atAfterVal= document.getElementById(prefix + '-at-after').value;
+  var alertAt   = hasAlert && atDateVal  ? new Date(atDateVal).toISOString() : null;
+  var alertAfter= hasAlert && atAfterVal ? parseInt(atAfterVal) : null;
+  if (editNoteId) {
+    var r = await sb.from('notes').update({ title: title, body: body, alert_at: alertAt, alert_after: alertAfter, alert_fired: false }).eq('id', editNoteId);
+    if (r.error) { toast('Error: ' + r.error.message); return; }
+    var n = notes.find(function(x) { return x.id == editNoteId; });
+    Object.assign(n, { title: title, body: body, alertAt: alertAt, alertAfter: alertAfter, alertFired: false });
+    cancelAlert(editNoteId); if (alertAt || alertAfter) scheduleAlert(n);
+    toast('Saved');
+  } else {
+    var r = await sb.from('notes').insert({ title: title, body: body, alert_at: alertAt, alert_after: alertAfter, read: false, alert_fired: false, user_id: currentUser.id }).select().single();
+    if (r.error) { toast('Error: ' + r.error.message); return; }
+    var n = r.data; n.alertAt = n.alert_at; n.alertAfter = n.alert_after; n.alertFired = n.alert_fired; n.createdAt = n.created_at;
+    notes.unshift(n); if (alertAt || alertAfter) scheduleAlert(n);
+    toast('Added');
   }
   renderNotes(); updateBadge();
 }
-async function confirmNote(){await _saveNote('fn');closeSheets();}
-async function deskConfirmNote(){await _saveNote('dfn');closeDeskPanel('desk-note-panel');}
-async function deleteNote(id){
-  if(!confirm('Delete this note?'))return;
-  cancelAlerts(id);
-  await sb.from('notes').delete().eq('id',id);
-  notes=notes.filter(function(x){return x.id!==id;}); renderNotes(); updateBadge(); toast('Deleted');
+
+async function confirmNote()     { await _saveNote('fn');  closeSheets(); }
+async function deskConfirmNote() { await _saveNote('dfn'); closeDeskPanel('desk-note-panel'); }
+
+async function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  cancelAlert(id);
+  await sb.from('notes').delete().eq('id', id);
+  notes = notes.filter(function(x) { return x.id != id; });
+  renderNotes(); updateBadge(); toast('Deleted');
 }
 
-// ── ALERTS ──
-function scheduleAlerts(note) {
-  cancelAlerts(note.id); var timers=[];
-  if(note.alertAt){var ms=new Date(note.alertAt)-new Date();if(ms>0)timers.push(setTimeout(function(){fireAlert(note.id,'at');},ms));}
-  if(note.alertAfter) timers.push(setTimeout(function(){fireAlert(note.id,'after');},note.alertAfter*1000));
-  alertTimers[note.id]=timers;
-  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+// ════════════════════════════════════════════════════
+// ALERTS
+// ════════════════════════════════════════════════════
+function scheduleAlert(note) {
+  cancelAlert(note.id);
+  var timers = [];
+  if (note.alertAt) { var ms = new Date(note.alertAt) - new Date(); if (ms > 0) timers.push(setTimeout(function(){ fireAlert(note.id); }, ms)); }
+  if (note.alertAfter) timers.push(setTimeout(function(){ fireAlert(note.id); }, note.alertAfter * 1000));
+  alertTimers[note.id] = timers;
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 }
-function cancelAlerts(id){if(alertTimers[id]){alertTimers[id].forEach(clearTimeout);delete alertTimers[id];}}
-async function fireAlert(noteId,type){
-  var n=notes.find(function(x){return x.id===noteId;}); if(!n) return;
-  await sb.from('notes').update({alert_fired:true}).eq('id',noteId);
-  n.alertFired=true; renderNotes();
-  var msg=type==='at'?'Your scheduled alert':'Reminder: '+fmtDur(n.alertAfter);
-  var r=await sb.from('notifications').insert({user_id:currentUser.id,note_id:noteId,title:n.title||'Note',message:msg,read:false}).select().single();
-  if(r.data) notifs.unshift(Object.assign(r.data,{noteId:r.data.note_id}));
+function cancelAlert(id) { if (alertTimers[id]) { alertTimers[id].forEach(clearTimeout); delete alertTimers[id]; } }
+
+async function fireAlert(noteId) {
+  var n = notes.find(function(x) { return x.id == noteId; }); if (!n) return;
+  await sb.from('notes').update({ alert_fired: true }).eq('id', noteId);
+  n.alertFired = true; renderNotes();
+  var r = await sb.from('notifications').insert({ user_id: currentUser.id, note_id: noteId, title: n.title || 'Note', message: 'Alert: ' + (n.title || 'Note'), read: false }).select().single();
+  if (r.data) { var nn = r.data; nn.noteId = nn.note_id; notifs.unshift(nn); }
   renderNotifs(); updateBadge();
-  if('Notification' in window && Notification.permission==='granted'){try{new Notification(n.title||'Note',{body:msg});}catch(e){}}
-  toast('🔔 '+(n.title||'Note'));
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(n.title || 'Note', { body: 'Your alert is ready!' }); } catch(e) {}
+  }
+  toast('&#128276; ' + (n.title || 'Note'));
 }
 
-// ── NOTIFICATIONS ──
-function renderNotifs(){
-  var c=document.getElementById('notifs-list');
-  if(!notifs.length){c.innerHTML='<div class="empty"><div class="empty-icon">🔔</div><h3>No Alerts</h3><p>Alerts from your notes appear here</p></div>';return;}
-  var unread=notifs.filter(function(n){return !n.read;}),read=notifs.filter(function(n){return n.read;});
-  var html='';
-  if(unread.length) html+='<div class="notif-section-label">Unread</div><div class="notif-group">'+unread.map(notifRow).join('')+'</div>';
-  if(read.length) html+='<div class="notif-section-label">Read</div><div class="notif-group">'+read.map(notifRow).join('')+'</div>';
-  html+='<button class="clear-all-btn" onclick="clearAllNotifs()">Clear All</button>';
-  c.innerHTML=html;
-}
-function notifRow(n,i){
-  return '<div class="notif-row '+(n.read?'':'unread')+'" style="animation-delay:'+(i*.03)+'s"><div class="notif-icon" style="background:rgba(255,149,0,.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div><div class="notif-body"><div class="notif-app">LinkUp</div><div class="notif-title">'+esc(n.title)+'</div><div class="notif-msg">'+esc(n.message)+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0"><div class="notif-time">'+(fmt(n.time)||'')+'</div><button class="notif-del-btn" onclick="deleteNotif('+n.id+')"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg></button></div>'+(n.read?'':'<div class="notif-unread-dot"></div>')+'</div>';
-}
-async function deleteNotif(id){await sb.from('notifications').delete().eq('id',id);notifs=notifs.filter(function(x){return x.id!==id;});renderNotifs();updateBadge();}
-async function clearAllNotifs(){if(!confirm('Clear all alerts?'))return;await sb.from('notifications').delete().eq('user_id',currentUser.id);notifs=[];renderNotifs();updateBadge();toast('Cleared');}
-async function markAllNotifsRead(){
-  var unread=notifs.filter(function(n){return !n.read;}); if(!unread.length) return;
-  await sb.from('notifications').update({read:true}).eq('user_id',currentUser.id).eq('read',false);
-  notifs.forEach(function(n){n.read=true;}); renderNotifs(); updateBadge();
-}
-function updateBadge(){
-  var cnt=notifs.filter(function(n){return !n.read;}).length;
-  var tb=document.getElementById('notif-badge'); if(tb){tb.style.display=cnt?'flex':'none';tb.textContent=cnt>99?'99+':cnt;}
-  var sb2=document.getElementById('sb-notifs-badge'); if(sb2){sb2.style.display=cnt?'flex':'none';sb2.textContent=cnt>99?'99+':cnt;}
+// ════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════════════════════
+function renderNotifs() {
+  var container = document.getElementById('notifs-list');
+  if (!notifs.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">&#128276;</div><h3>No Alerts</h3><p>Alerts from your notes appear here</p></div>';
+    return;
+  }
+  var unread = notifs.filter(function(n) { return !n.read; });
+  var read   = notifs.filter(function(n) { return n.read; });
+  var html = '';
+  if (unread.length) html += '<div class="notif-section-label">Unread</div><div class="notif-group">' + unread.map(buildNotifRow).join('') + '</div>';
+  if (read.length)   html += '<div class="notif-section-label">Read</div><div class="notif-group">' + read.map(buildNotifRow).join('') + '</div>';
+  html += '<button class="clear-all-btn" onclick="clearAllNotifs()">Clear All</button>';
+  container.innerHTML = html;
 }
 
-// ── SETTINGS ──
-function openSettings(){
-  var isDesk=window.innerWidth>=768;
-  if(isDesk){renderSettingsGroups();document.getElementById('settings-panel').classList.add('open');}
-  else openSheet('sheet-settings-mobile');
+function buildNotifRow(n, i) {
+  return '<div class="notif-row ' + (n.read ? '' : 'unread') + '" style="animation-delay:' + (i * 0.03) + 's">'
+    + '<div class="notif-icon" style="background:rgba(255,149,0,.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>'
+    + '<div class="notif-body"><div class="notif-app">LinkUp</div><div class="notif-title">' + esc(n.title) + '</div><div class="notif-msg">' + esc(n.message) + '</div></div>'
+    + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'
+    + '<div class="notif-time">' + (fmt(n.time) || '') + '</div>'
+    + '<button class="notif-del-btn" data-nid="' + n.id + '" onclick="deleteNotif(this.dataset.nid)"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg></button>'
+    + '</div>'
+    + (n.read ? '' : '<div class="notif-unread-dot"></div>')
+    + '</div>';
 }
-function closeSettings(){document.getElementById('settings-panel').classList.remove('open');}
-async function clearAll(){
-  if(!confirm('Delete all your data?'))return;
+
+async function deleteNotif(nid) {
+  await sb.from('notifications').delete().eq('id', parseInt(nid));
+  notifs = notifs.filter(function(x) { return x.id != nid; });
+  renderNotifs(); updateBadge();
+}
+
+async function clearAllNotifs() {
+  if (!confirm('Clear all alerts?')) return;
+  await sb.from('notifications').delete().eq('user_id', currentUser.id);
+  notifs = []; renderNotifs(); updateBadge(); toast('Cleared');
+}
+
+async function markAllNotifsRead() {
+  var unread = notifs.filter(function(n) { return !n.read; }); if (!unread.length) return;
+  await sb.from('notifications').update({ read: true }).eq('user_id', currentUser.id).eq('read', false);
+  notifs.forEach(function(n) { n.read = true; }); renderNotifs(); updateBadge();
+}
+
+function updateBadge() {
+  var cnt = notifs.filter(function(n) { return !n.read; }).length;
+  var tb  = document.getElementById('notif-badge');    if (tb)  { tb.style.display  = cnt ? 'flex' : 'none'; tb.textContent  = cnt > 99 ? '99+' : cnt; }
+  var sb2 = document.getElementById('sb-notifs-badge'); if (sb2) { sb2.style.display = cnt ? 'flex' : 'none'; sb2.textContent = cnt > 99 ? '99+' : cnt; }
+}
+
+// ════════════════════════════════════════════════════
+// SETTINGS — CLEAR ALL
+// ════════════════════════════════════════════════════
+async function clearAll() {
+  if (!confirm('Delete all your data?')) return;
   await Promise.all([
-    sb.from('notifications').delete().eq('user_id',currentUser.id),
-    sb.from('notes').delete().eq('user_id',currentUser.id),
-    sb.from('sites').delete().eq('user_id',currentUser.id),
-    sb.from('groups').delete().eq('user_id',currentUser.id),
+    sb.from('notifications').delete().eq('user_id', currentUser.id),
+    sb.from('notes').delete().eq('user_id', currentUser.id),
+    sb.from('sites').delete().eq('user_id', currentUser.id),
+    sb.from('groups').delete().eq('user_id', currentUser.id)
   ]);
-  sites=[];notes=[];groups=[];notifs=[];
-  closeSettings();closeSheets();
-  renderSites();renderNotes();renderNotifs();renderSettingsGroups();updateBadge();toast('Cleared');
+  sites = []; notes = []; groups = []; notifs = [];
+  closeSettings(); closeSheets();
+  renderSites(); renderNotes(); renderNotifs(); renderSettingsGroups(); updateBadge();
+  toast('All data cleared');
 }
 
-// ── DESKTOP PANELS ──
-function isDesktop(){return window.innerWidth>=768;}
-function openDeskPanel(id){document.getElementById(id).classList.add('open');}
-function closeDeskPanel(id){document.getElementById(id).classList.remove('open');}
-
-// ── SHEETS ──
-function openSheet(id){document.getElementById('overlay').classList.add('open');document.getElementById(id).classList.add('open');}
-function closeSheets(){document.getElementById('overlay').classList.remove('open');document.querySelectorAll('.sheet').forEach(function(s){s.classList.remove('open');});}
-function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('show');},2200);}
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSheets();closeSettings();document.querySelectorAll('.desk-panel').forEach(function(p){p.classList.remove('open');});}}); 
-
-// ── KICK OFF ──
+// ════════════════════════════════════════════════════
+// KICK OFF
+// ════════════════════════════════════════════════════
 initSupabase();
+
 </script>
 
 </body></html>
