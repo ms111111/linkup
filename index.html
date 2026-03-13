@@ -977,35 +977,27 @@ function startApp() {
     var el = document.getElementById(id); if (el) el.checked = rm;
   });
 
-  // ── تحقق من Google OAuth callback (hash يحتوي access_token) ──
   var hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    // Google أو أي OAuth provider رجع بـ token
+  var search = window.location.search;
+
+  if (hash && hash.includes('type=recovery') && hash.includes('access_token')) {
+    window.history.replaceState(null, '', window.location.pathname);
     var params = new URLSearchParams(hash.replace('#', ''));
-    var type = params.get('type');
-    if (type === 'recovery') {
-      // reset password
-      window.history.replaceState(null, '', window.location.pathname);
-      sb.auth.setSession({
-        access_token: params.get('access_token'),
-        refresh_token: params.get('refresh_token') || ''
-      }).then(function() { showScreen('screen-new-password'); });
-      return;
-    } else {
-      // Google / OAuth login — Supabase يتعامل معه تلقائياً عبر onAuthStateChange
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    sb.auth.setSession({
+      access_token: params.get('access_token'),
+      refresh_token: params.get('refresh_token') || ''
+    }).then(function() { showScreen('screen-new-password'); });
+    return;
   }
 
-  // ── Auth state listener ──
-  // يشتغل على كل تغيير في الـ auth state
+  // مسح الـ URL بعد OAuth
+  if (hash.includes('access_token') || search.includes('code=')) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
   sb.auth.onAuthStateChange(function(event, session) {
     console.log('[LinkUp] Auth event:', event, session ? session.user.email : 'no session');
     if (event === 'SIGNED_IN' && session && session.user) {
-      // افتح التطبيق إذا:
-      // 1. المستخدم ضغط زر دخول (userInitiatedLogin)
-      // 2. Remember Me مفعّل
-      // 3. Google OAuth callback (isOAuthCallback)
       var rememberMe = localStorage.getItem('lu5-remember') === 'true';
       if (userInitiatedLogin || rememberMe || isOAuthCallback) {
         userInitiatedLogin = false;
@@ -1022,18 +1014,18 @@ function startApp() {
     }
   });
 
-  // ── تحقق من session موجودة عند تحميل الصفحة ──
   sb.auth.getSession().then(function(res) {
     var session = res.data && res.data.session;
     var rememberMe = localStorage.getItem('lu5-remember') === 'true';
     console.log('[LinkUp] getSession:', session ? session.user.email : 'no session', '| remember:', rememberMe, '| oauthCallback:', isOAuthCallback);
 
     if (session && session.user) {
-      if (rememberMe || isOAuthCallback) {
+      if (rememberMe) {
+        onUserSignedIn(session.user);
+      } else if (isOAuthCallback) {
         isOAuthCallback = false;
         onUserSignedIn(session.user);
       } else {
-        // لا remember me ولا OAuth — امسح وأظهر welcome
         sb.auth.signOut({ scope: 'local' }).then(function() {
           showScreen('screen-welcome');
         });
@@ -1043,7 +1035,7 @@ function startApp() {
     }
   });
 }
-
+  
 function onUserSignedIn(user) {
   currentUser = user;
   document.querySelectorAll('.auth-screen').forEach(function(s) { s.classList.add('hidden'); });
