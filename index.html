@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0043)file:///Users/uesr/Downloads/LinkUp_18.html -->
+<!-- saved from url=(0043)file:///Users/uesr/Downloads/LinkUp_19.html -->
 <html lang="en" data-theme="" dir="ltr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -457,7 +457,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
 }
 </style>
 
-</head>
+<script src="./index_files/supabase-js@2"></script></head>
 <body>
 
 <!-- ═══ AUTH SCREENS ═══ -->
@@ -887,7 +887,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="./index_files/supabase.js"></script>
+<script>
+(function loadSupabase() {
+  var urls = [
+    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+    "https://unpkg.com/@supabase/supabase-js@2",
+    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.52.0/dist/umd/supabase.js"
+  ];
+  var i = 0;
+  function tryNext() {
+    if (i >= urls.length) {
+      document.body.innerHTML = '<div style="text-align:center;padding:60px;font-family:system-ui"><h2>Connection Error</h2><p>Please check your internet and refresh.</p><button onclick="location.reload()" style="padding:12px 24px;background:#007AFF;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer">Refresh</button></div>';
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = urls[i++];
+    s.onerror = function() { tryNext(); };
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+</script>
 <script>
 // ════════════════════════════════════════════════════
 // LINKUP v5 — STATE
