@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<!-- saved from url=(0035)https://ms111111.github.io/linkup/# -->
-<html lang="en" data-theme="" dir="ltr" webcrx=""><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- saved from url=(0043)file:///Users/uesr/Downloads/LinkUp_21.html -->
+<html lang="en" data-theme="" dir="ltr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>LinkUp</title>
@@ -457,7 +457,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
 }
 </style>
 
-<script src="./index_files/supabase-js@2"></script><link type="text/css" rel="stylesheet" id="dark-mode-custom-link"><link type="text/css" rel="stylesheet" id="dark-mode-general-link"><style lang="en" type="text/css" id="dark-mode-custom-style"></style><style lang="en" type="text/css" id="dark-mode-native-style"></style><style lang="en" type="text/css" id="dark-mode-native-sheet"></style><script src="blob:https://ms111111.github.io/e081cfb2-a115-4f69-8a8b-ca3e794e3bed"></script><script src="./index_files/supabase-js@2(1)"></script><script src="blob:https://ms111111.github.io/8ebbd2e8-c47e-486f-8c48-e154e8f8a009"></script><script src="blob:https://ms111111.github.io/a2b4a88e-d97c-4ccf-913d-6e4724d32990"></script></head>
+</head>
 <body>
 
 <!-- ═══ AUTH SCREENS ═══ -->
@@ -887,27 +887,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--lbl);-webkit-font-
 </div>
 
 <div class="toast" id="toast"></div>
-<script>
-(function loadSupabase() {
-  var urls = [
-    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
-    "https://unpkg.com/@supabase/supabase-js@2",
-    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.52.0/dist/umd/supabase.js"
-  ];
-  var i = 0;
-  function tryNext() {
-    if (i >= urls.length) {
-      document.body.innerHTML = '<div style="text-align:center;padding:60px;font-family:system-ui"><h2>Connection Error</h2><p>Please check your internet and refresh.</p><button onclick="location.reload()" style="padding:12px 24px;background:#007AFF;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer">Refresh</button></div>';
-      return;
-    }
-    var s = document.createElement('script');
-    s.src = urls[i++];
-    s.onerror = function() { tryNext(); };
-    document.head.appendChild(s);
-  }
-  tryNext();
-})();
-</script>
+<script src="./index_files/supabase.js"></script>
 <script>
 // ════════════════════════════════════════════════════
 // LINKUP v5 — STATE
@@ -924,20 +904,62 @@ var collapsedGroups = new Set(JSON.parse(localStorage.getItem('lu5-collapsed') |
 var alertTimers = {};
 var openSiteAct = null;
 var userInitiatedLogin = false;
+var isOAuthCallback = (function() {
+  var h = window.location.hash || '';
+  // Google OAuth callback يحتوي access_token لكن مش type=recovery
+  return h.includes('access_token') && !h.includes('type=recovery');
+})();
 
 // ════════════════════════════════════════════════════
 // SUPABASE INIT — انتظر تحميل المكتبة
 // ════════════════════════════════════════════════════
 function initSupabase() {
-  if (typeof supabase !== 'undefined' && supabase.createClient) {
-    sb = supabase.createClient(
-      'https://fkrziclcdyjdekqpyklc.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrcnppY2xjZHlqZGVrcXB5a2xjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkzMjEsImV4cCI6MjA4ODkwNTMyMX0.nQQmPIgP8FVAujyTbi4i4cxVAdEVbmvYGO1_34J8Xio'
-    );
-    startApp();
-  } else {
-    setTimeout(initSupabase, 100);
+  var SUPABASE_URL = 'https://fkrziclcdyjdekqpyklc.supabase.co';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrcnppY2xjZHlqZGVrcXB5a2xjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkzMjEsImV4cCI6MjA4ODkwNTMyMX0.nQQmPIgP8FVAujyTbi4i4cxVAdEVbmvYGO1_34J8Xio';
+  var attempts = 0;
+  var maxAttempts = 100; // 10 ثوان
+
+  function tryInit() {
+    attempts++;
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+      try {
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true }
+        });
+        console.log('[LinkUp] Supabase loaded ✅ (attempt ' + attempts + ')');
+        startApp();
+      } catch(e) {
+        console.error('[LinkUp] Supabase createClient failed:', e);
+        showFatalError('Failed to initialize. Please refresh.');
+      }
+    } else if (attempts < maxAttempts) {
+      setTimeout(tryInit, 100);
+    } else {
+      console.error('[LinkUp] Supabase CDN failed to load after 10s');
+      showFatalError('Connection failed. Please check your internet and refresh.');
+    }
   }
+
+  // إذا كانت المكتبة اتحملت بالفعل (sync script)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInit);
+  } else {
+    tryInit();
+  }
+}
+
+function showFatalError(msg) {
+  var el = document.getElementById('app');
+  // أظهر الـ welcome screen مع رسالة خطأ
+  showScreen('screen-welcome');
+  var errDiv = document.getElementById('sb-load-error');
+  if (!errDiv) {
+    errDiv = document.createElement('div');
+    errDiv.id = 'sb-load-error';
+    errDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#FF3B30;color:#fff;text-align:center;padding:12px;font-size:14px;font-family:system-ui;z-index:9999';
+    document.body.prepend(errDiv);
+  }
+  errDiv.innerHTML = msg + ' <button onclick="location.reload()" style="background:rgba(255,255,255,.3);border:none;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px">Refresh</button>';
 }
 
 // ════════════════════════════════════════════════════
@@ -948,11 +970,49 @@ function startApp() {
   setLang(lang);
   document.getElementById('fab').style.display = 'none';
 
+  var rm = localStorage.getItem('lu5-remember') === 'true';
+  ['remember-toggle','remember-toggle-mobile','remember-me-toggle'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.checked = rm;
+  });
+
+  // ── تحقق من Google OAuth callback (hash يحتوي access_token) ──
+  var hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    // Google أو أي OAuth provider رجع بـ token
+    var params = new URLSearchParams(hash.replace('#', ''));
+    var type = params.get('type');
+    if (type === 'recovery') {
+      // reset password
+      window.history.replaceState(null, '', window.location.pathname);
+      sb.auth.setSession({
+        access_token: params.get('access_token'),
+        refresh_token: params.get('refresh_token') || ''
+      }).then(function() { showScreen('screen-new-password'); });
+      return;
+    } else {
+      // Google / OAuth login — Supabase يتعامل معه تلقائياً عبر onAuthStateChange
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
+  // ── Auth state listener ──
+  // يشتغل على كل تغيير في الـ auth state
   sb.auth.onAuthStateChange(function(event, session) {
+    console.log('[LinkUp] Auth event:', event, session ? session.user.email : 'no session');
     if (event === 'SIGNED_IN' && session && session.user) {
+      // افتح التطبيق إذا:
+      // 1. المستخدم ضغط زر دخول (userInitiatedLogin)
+      // 2. Remember Me مفعّل
+      // 3. Google OAuth callback (isOAuthCallback)
       var rememberMe = localStorage.getItem('lu5-remember') === 'true';
-      if (userInitiatedLogin || rememberMe) {
+      if (userInitiatedLogin || rememberMe || isOAuthCallback) {
         userInitiatedLogin = false;
+        isOAuthCallback = false;
+        onUserSignedIn(session.user);
+      }
+    } else if (event === 'TOKEN_REFRESHED' && session && session.user) {
+      var rememberMe = localStorage.getItem('lu5-remember') === 'true';
+      if (rememberMe && !currentUser) {
         onUserSignedIn(session.user);
       }
     } else if (event === 'SIGNED_OUT') {
@@ -960,24 +1020,25 @@ function startApp() {
     }
   });
 
-  var rememberMe = localStorage.getItem('lu5-remember') === 'true';
+  // ── تحقق من session موجودة عند تحميل الصفحة ──
   sb.auth.getSession().then(function(res) {
     var session = res.data && res.data.session;
-    if (session && session.user && rememberMe) {
-      onUserSignedIn(session.user);
-    } else if (session) {
-      sb.auth.signOut().then(function() { showScreen('screen-welcome'); });
+    var rememberMe = localStorage.getItem('lu5-remember') === 'true';
+    console.log('[LinkUp] getSession:', session ? session.user.email : 'no session', '| remember:', rememberMe, '| oauthCallback:', isOAuthCallback);
+
+    if (session && session.user) {
+      if (rememberMe || isOAuthCallback) {
+        isOAuthCallback = false;
+        onUserSignedIn(session.user);
+      } else {
+        // لا remember me ولا OAuth — امسح وأظهر welcome
+        sb.auth.signOut({ scope: 'local' }).then(function() {
+          showScreen('screen-welcome');
+        });
+      }
     } else {
       showScreen('screen-welcome');
     }
-  });
-
-  checkPasswordRecovery();
-
-  var rm = localStorage.getItem('lu5-remember') === 'true';
-  ['remember-toggle','remember-toggle-mobile','remember-me-toggle'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.checked = rm;
   });
 }
 
